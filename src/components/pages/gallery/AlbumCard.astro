@@ -12,7 +12,7 @@ const { id, name, cover, description, date, location, tags, photoCount } =
 	Astro.props;
 
 // 建议在这里处理一下 base 路径，确保拼接时不会出现双斜杠
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const albumUrl = `${base}/gallery/${id}/`;
 ---
 

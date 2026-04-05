@@ -29,11 +29,11 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	}
 
 	if (siteConfig.pages.bangumi) {
-		links.push(LinkPreset.Bangumi); 
+		links.push(LinkPreset.Bangumi);
 	}
 
 	if (siteConfig.pages.about !== false) {
-    links.push(LinkPreset.About);
+		links.push(LinkPreset.About);
 	}
 
 	// 仅返回链接，其它导航搜索相关配置在模块顶层常量中独立导出
