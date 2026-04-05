@@ -21,12 +21,10 @@ export const sponsorConfig: SponsorConfig = {
 	showButtonInPost: true,
 
 	// 赞助方式列表
-	methods: [
-	],
+	methods: [],
 
 	// 赞助者列表（可选）
 	sponsors: [
 		// 示例：已实名赞助者
-
 	],
 };

@@ -70,14 +70,14 @@ export const fontConfig = {
 			display: "swap" as const,
 		},
 		//我自己加的
-		"LXGW": {
-   			id: "LXGW",
-    		name: "LXGW",
-    		src: "https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-web/lxgwwenkaiscreen/result.css",
-		    family: "LXGW WenKai Screen",
+		LXGW: {
+			id: "LXGW",
+			name: "LXGW",
+			src: "https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-web/lxgwwenkaiscreen/result.css",
+			family: "LXGW WenKai Screen",
 			weight: 600,
-    		display: "swap" as const,
-  },
+			display: "swap" as const,
+		},
 	},
 
 	// 全局字体回退
