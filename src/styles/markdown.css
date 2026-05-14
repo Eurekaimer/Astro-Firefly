@@ -83,6 +83,15 @@
     @apply my-4;
   }
 
+  .yuri-icon {
+    display: inline-block;
+    width: 1.25em;
+    height: 1.25em;
+    margin: 0 0.18em 0 0;
+    vertical-align: -0.22em;
+    border-radius: 0;
+  }
+
   ul,
   ol {
     li::marker {

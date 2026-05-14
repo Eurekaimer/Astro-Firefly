@@ -119,6 +119,13 @@ export const siteConfig: SiteConfig = {
 		categoryOrder: ["anime", "book", "music", "game"],
 	},
 
+	// Steam 统计页配置。STEAM_API_KEY 通过环境变量读取，不写入仓库。
+	steam: {
+		steamId: "76561199520870845",
+		recentLimit: 8,
+		topLimit: 12,
+	},
+
 	// 页面开关配置 - 控制特定页面的访问权限，设为false会返回404
 	// bangumi的数据为编译时获取的，所以不是实时数据，请配置bangumi.userId
 	pages: {
@@ -130,6 +137,8 @@ export const siteConfig: SiteConfig = {
 		guestbook: false,
 		// 番组计划页面开关，含追番、游戏、书籍和音乐，dev调试时只获取一页数据，build才会获取全部数据
 		bangumi: true,
+		// Steam 统计页面开关
+		steam: true,
 		// 相册页面开关
 		gallery: true,
 	},

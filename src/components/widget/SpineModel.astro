@@ -367,8 +367,10 @@ import { url } from "@/utils/url-utils";
     }
   }
 
-  // 监听页面卸载事件，清理资源
-  window.addEventListener("beforeunload", cleanupSpineModel);
+  // pagehide 不会阻止浏览器使用 bfcache；进入 bfcache 时保留实例供返回后继续使用
+  window.addEventListener("pagehide", (event) => {
+    if (!event.persisted) cleanupSpineModel();
+  });
 
   // 监听 Swup 页面切换事件（如果使用了 Swup）
   if (typeof window.swup !== "undefined" && window.swup.hooks) {

@@ -175,6 +175,9 @@ export default defineConfig({
 				if (pathname === "/bangumi/" && !siteConfig.pages.bangumi) {
 					return false;
 				}
+				if (pathname === "/steam/" && !siteConfig.pages.steam) {
+					return false;
+				}
 				if (pathname === "/gallery/" && !siteConfig.pages.gallery) {
 					return false;
 				}

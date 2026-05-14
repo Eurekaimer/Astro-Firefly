@@ -53,6 +53,13 @@ export type SiteConfig = {
 		categoryOrder?: ("anime" | "game" | "book" | "music" | "real")[]; // 条目类型排序顺序
 	};
 
+	// Steam 统计页配置
+	steam?: {
+		steamId?: string; // Steam 64-bit ID
+		recentLimit?: number; // 近期游玩展示数量
+		topLimit?: number; // 最常玩游戏展示数量
+	};
+
 	generateOgImages: boolean;
 	favicon: Array<{
 		src: string;
@@ -80,10 +87,12 @@ export type SiteConfig = {
 
 	// 页面开关配置
 	pages: {
+		about?: boolean;
 		friends: boolean; // 友链页面开关
 		sponsor: boolean; // 赞助页面开关
 		guestbook: boolean; // 留言板页面开关
 		bangumi: boolean;
+		steam: boolean; // Steam 统计页面开关
 		gallery: boolean; // 相册页面开关
 	};
 
@@ -168,6 +177,7 @@ export enum LinkPreset {
 	Guestbook = 5,
 	Bangumi = 6,
 	Gallery = 7,
+	Steam = 8,
 }
 
 export type NavBarLink = {

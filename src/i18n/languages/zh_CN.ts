@@ -80,6 +80,8 @@ export const zh_CN: Translation = {
 	[Key.readTime]: "阅读时长",
 	[Key.license]: "许可协议",
 	[Key.bangumi]: "番组计划",
+	[Key.steam]: "Steam 统计",
+	[Key.steamDescription]: "记录我的游戏时间和最近玩过的游戏",
 
 	// 番组计划筛选和状态文本
 	[Key.bangumiTitle]: "我的番组计划",

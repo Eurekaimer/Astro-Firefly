@@ -31,6 +31,26 @@ const generateFontClasses = () => {
 
 const fontClasses = generateFontClasses();
 
+const isExternalFont = (src: string) =>
+	src.startsWith("http://") ||
+	src.startsWith("https://") ||
+	src.startsWith("//");
+
+const getFontOrigin = (src: string) => {
+	try {
+		const normalizedSrc = src.startsWith("//") ? `https:${src}` : src;
+		return new URL(normalizedSrc).origin;
+	} catch {
+		return "";
+	}
+};
+
+const externalFonts = selectedFonts.filter((font) => isExternalFont(font.src));
+const localFonts = selectedFonts.filter((font) => !isExternalFont(font.src));
+const externalFontOrigins = Array.from(
+	new Set(externalFonts.map((font) => getFontOrigin(font.src)).filter(Boolean)),
+);
+
 // 生成font-family回退样式
 const generateFontFamilyStyle = () => {
 	if (!fontConfig.enable || !fontConfig.selected) return "";
@@ -55,44 +75,57 @@ const generateFontFamilyStyle = () => {
 const fontFamilyStyle = generateFontFamilyStyle();
 ---
 
-<!-- 字体样式表链接 -->{
-  selectedFonts.map((font) => {
-    // 判断是否为外部链接
-    const isExternalUrl =
-      font.src.startsWith("http://") ||
-      font.src.startsWith("https://") ||
-      font.src.startsWith("//");
+<!-- 字体 CDN 预连接 -->
+{
+  externalFontOrigins.map((origin) => (
+    <>
+      <link rel="preconnect" href={origin} crossorigin />
+      <link rel="dns-prefetch" href={origin} />
+    </>
+  ))
+}
 
-    if (isExternalUrl) {
-      // 外部字体链接 (如 Google Fonts, CDN等)
-      return <link rel="stylesheet" href={font.src} />;
-    } else {
-      // 本地字体文件
-      return (
-        <style
-          set:html={`
-        @font-face {
-          font-family: "${font.family}";
-          src: url("${font.src}") ${font.format ? `format("${font.format}")` : ""};
-          ${font.weight ? `font-weight: ${font.weight};` : ""}
-          ${font.style ? `font-style: ${font.style};` : ""}
-          ${font.display ? `font-display: ${font.display};` : ""}
-          ${font.unicodeRange ? `unicode-range: ${font.unicodeRange};` : ""}
-        }
-      `}
-        />
-      );
+<!-- 外部字体异步加载，避免阻塞首屏渲染 -->
+{
+  externalFonts.map((font) => (
+    <>
+      <link rel="preload" as="style" href={font.src} />
+      <link
+        rel="stylesheet"
+        href={font.src}
+        media="print"
+        onload="this.setAttribute('media','all')"
+      />
+      <noscript>
+        <link rel="stylesheet" href={font.src} />
+      </noscript>
+    </>
+  ))
+}
+
+<!-- 本地字体样式 -->
+{
+  localFonts.map((font) => (
+    <style
+      set:html={`
+    @font-face {
+      font-family: "${font.family}";
+      src: url("${font.src}") ${font.format ? `format("${font.format}")` : ""};
+      ${font.weight ? `font-weight: ${font.weight};` : ""}
+      ${font.style ? `font-style: ${font.style};` : ""}
+      ${font.display ? `font-display: ${font.display};` : ""}
+      ${font.unicodeRange ? `unicode-range: ${font.unicodeRange};` : ""}
     }
-  })
+  `}
+    />
+  ))
 }
 
 <!-- 字体预加载链接 -->
 {
   fontConfig.enable &&
     fontConfig.preload &&
-    selectedFonts
-      .filter((font) => !font.src.startsWith("http"))
-      .map((font) => (
+    localFonts.map((font) => (
         <link
           rel="preload"
           href={font.src}
@@ -138,36 +171,3 @@ const fontFamilyStyle = generateFontFamilyStyle();
     />
   )
 }
-
-<script>
-  // 字体加载优化和错误处理
-  if (document.fonts && typeof document.fonts.ready !== "undefined") {
-    document.fonts.ready
-      .then(() => {
-        console.log("All fonts have been loaded");
-
-        // 触发自定义事件，通知字体加载完成
-        document.dispatchEvent(new CustomEvent("fontsLoaded"));
-      })
-      .catch((error: Error) => {
-        console.warn("Font loading failed:", error);
-      });
-  }
-
-  // 字体加载性能监控
-  if (typeof PerformanceObserver !== "undefined") {
-    const observer = new PerformanceObserver((list) => {
-      list.getEntries().forEach((entry) => {
-        if (entry.entryType === "resource") {
-          // console.log(`Font resource loaded: ${entry.name} (${entry.duration.toFixed(2)}ms)`);
-        }
-      });
-    });
-
-    try {
-      observer.observe({ entryTypes: ["resource"] });
-    } catch (e) {
-      // 浏览器不支持时静默失败
-    }
-  }
-</script>

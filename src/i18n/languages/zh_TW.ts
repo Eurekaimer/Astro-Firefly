@@ -80,6 +80,8 @@ export const zh_TW: Translation = {
 	[Key.readTime]: "閱讀時長",
 	[Key.license]: "許可協議",
 	[Key.bangumi]: "番組計劃",
+	[Key.steam]: "Steam 統計",
+	[Key.steamDescription]: "記錄我的遊戲時間和最近玩過的遊戲",
 
 	// 番組計劃
 	[Key.bangumiTitle]: "我的番組計劃",

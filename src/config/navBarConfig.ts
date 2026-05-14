@@ -38,6 +38,11 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
         links.push(LinkPreset.Bangumi);
     }
 
+    // 根据配置决定是否添加 Steam 统计
+    if (siteConfig.pages.steam) {
+        links.push(LinkPreset.Steam);
+    }
+
     // 根据配置决定是否添加关于页面
     if (siteConfig.pages.about !== false) {
         links.push(LinkPreset.About);

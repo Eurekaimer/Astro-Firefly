@@ -82,6 +82,8 @@ export const ja: Translation = {
 	[Key.readTime]: "読了時間",
 	[Key.license]: "ライセンス",
 	[Key.bangumi]: "バングミ",
+	[Key.steam]: "Steam 統計",
+	[Key.steamDescription]: "プレイ時間と最近遊んだゲームを記録する",
 
 	// バングミフィルターと状態文本
 	[Key.bangumiTitle]: "私のバングミ",

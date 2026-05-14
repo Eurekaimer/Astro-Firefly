@@ -82,6 +82,8 @@ export const en: Translation = {
 	[Key.readTime]: "Read time",
 	[Key.license]: "License",
 	[Key.bangumi]: "Bangumi",
+	[Key.steam]: "Steam Stats",
+	[Key.steamDescription]: "Track my playtime and recently played games",
 
 	// Bangumi Filter and Status Text
 	[Key.bangumiTitle]: "My Bangumi",

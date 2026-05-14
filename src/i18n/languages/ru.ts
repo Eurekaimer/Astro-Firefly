@@ -82,6 +82,8 @@ export const ru: Translation = {
 	[Key.readTime]: "Время чтения",
 	[Key.license]: "Лицензия",
 	[Key.bangumi]: "Бангуми",
+	[Key.steam]: "Статистика Steam",
+	[Key.steamDescription]: "Запись моего игрового времени и недавних игр",
 
 	// Фильтр и статус Бангуми текст
 	[Key.bangumiTitle]: "Мой план группы",

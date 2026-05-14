@@ -38,6 +38,11 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		url: "/bangumi/",
 		icon: "material-symbols:movie",
 	},
+	[LinkPreset.Steam]: {
+		name: i18n(I18nKey.steam),
+		url: "/steam/",
+		icon: "fa7-brands:steam",
+	},
 	[LinkPreset.Gallery]: {
 		name: i18n(I18nKey.gallery),
 		url: "/gallery/",

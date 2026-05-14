@@ -177,8 +177,7 @@ const sidebarPosition = sidebarLayoutConfig.position;
 
   // 设置自动关闭功能
   function setupAutoClose() {
-    // 监听页面卸载和隐藏
-    window.addEventListener("beforeunload", closeTOC);
+    // pagehide 不会阻止浏览器使用 bfcache
     window.addEventListener("pagehide", closeTOC);
     window.addEventListener("popstate", closeTOC);
     
