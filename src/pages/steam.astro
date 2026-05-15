@@ -5,6 +5,7 @@ import I18nKey from "@/i18n/i18nKey";
 import { i18n } from "@/i18n/translation";
 import MainGridLayout from "@/layouts/MainGridLayout.astro";
 import { formatDateI18nWithTime } from "@/utils/date-utils";
+import steamHistory from "@/data/steam-history.json";
 
 if (!siteConfig.pages.steam) {
 	return Astro.redirect("/404/");
@@ -33,9 +34,69 @@ type SteamRecentlyPlayedResponse = {
 	};
 };
 
+type SteamStoreAppData = {
+	header_image?: string;
+	capsule_image?: string;
+	capsule_imagev5?: string;
+};
+
+type SteamStoreAppDetailsResponse = Record<
+	string,
+	{
+		success?: boolean;
+		data?: SteamStoreAppData;
+	}
+>;
+
 type SteamGame = SteamOwnedGame & {
 	playtime_forever: number;
 	playtime_2weeks: number;
+	coverUrls: string[];
+};
+
+type SteamHistorySnapshot = {
+	date: string;
+	recordedAt?: string;
+	totalPlayMinutes: number;
+	recentPlayMinutes?: number;
+	gameCount?: number;
+	playedGameCount?: number;
+	topGame?: {
+		appid: number;
+		name: string;
+		playtime_forever: number;
+	};
+};
+
+type SteamTrendPoint = {
+	date: string;
+	label: string;
+	minutes: number;
+	x: number;
+	y: number;
+	isMarker: boolean;
+};
+
+type SteamTrendChart = {
+	range: "week" | "month";
+	days: number;
+	title: string;
+	totalMinutes: number;
+	averageMinutes: number;
+	previousTotalMinutes: number;
+	percentChange: number | null;
+	percentText: string;
+	compareLabel: string;
+	insight: string;
+	tone: "up" | "down" | "flat" | "new" | "empty";
+	path: string;
+	areaPath: string;
+	gridPath: string;
+	points: SteamTrendPoint[];
+	startLabel: string;
+	endLabel: string;
+	maxLabel: string;
+	snapshotCount: number;
 };
 
 const buildTime = formatDateI18nWithTime(new Date());
@@ -44,17 +105,18 @@ const steamApiKey = import.meta.env.STEAM_API_KEY?.trim() || "";
 const recentLimit = siteConfig.steam?.recentLimit ?? 8;
 const topLimit = siteConfig.steam?.topLimit ?? 12;
 const apiBaseUrl = "https://api.steampowered.com/IPlayerService";
+const storeDetailsConcurrency = 6;
+const storeDetailsTimeoutMs = 5000;
 
 let games: SteamGame[] = [];
 let recentGames: SteamGame[] = [];
-let fetchStatus:
-	| "ok"
-	| "missing_config"
-	| "missing_key"
-	| "empty"
-	| "failed" = "ok";
+let fetchStatus: "ok" | "missing_config" | "missing_key" | "empty" | "failed" =
+	"ok";
 
-async function fetchSteamJson<T>(method: string, params: Record<string, string>) {
+async function fetchSteamJson<T>(
+	method: string,
+	params: Record<string, string>,
+) {
 	const url = new URL(`${apiBaseUrl}/${method}/v0001/`);
 	for (const [key, value] of Object.entries(params)) {
 		url.searchParams.set(key, value);
@@ -67,6 +129,84 @@ async function fetchSteamJson<T>(method: string, params: Record<string, string>)
 	}
 
 	return (await response.json()) as T;
+}
+
+async function mapWithConcurrency<T, U>(
+	items: T[],
+	limit: number,
+	mapper: (item: T) => Promise<U>,
+) {
+	const results: U[] = [];
+	let index = 0;
+
+	async function worker() {
+		while (index < items.length) {
+			const currentIndex = index;
+			index += 1;
+			results[currentIndex] = await mapper(items[currentIndex]);
+		}
+	}
+
+	await Promise.all(
+		Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+	);
+
+	return results;
+}
+
+async function fetchSteamStoreDetails(appids: number[]) {
+	const details = new Map<number, SteamStoreAppData>();
+	const uniqueAppIds = Array.from(new Set(appids));
+
+	const entries = await mapWithConcurrency(
+		uniqueAppIds,
+		storeDetailsConcurrency,
+		async (appid) => {
+			const url = new URL("https://store.steampowered.com/api/appdetails");
+			url.searchParams.set("appids", String(appid));
+			url.searchParams.set("filters", "basic");
+
+			try {
+				const response = await fetch(url, {
+					signal: AbortSignal.timeout(storeDetailsTimeoutMs),
+				});
+				if (!response.ok) return undefined;
+
+				const data = (await response.json()) as SteamStoreAppDetailsResponse;
+				const detail = data[String(appid)];
+				if (!detail?.success || !detail.data) return undefined;
+
+				return [appid, detail.data] as const;
+			} catch (error) {
+				console.warn(`[Steam] 获取 ${appid} 商店封面失败:`, error);
+				return undefined;
+			}
+		},
+	);
+
+	for (const entry of entries) {
+		if (entry) details.set(entry[0], entry[1]);
+	}
+
+	return details;
+}
+
+function getDefaultCoverUrls(appid: number) {
+	return [
+		`https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`,
+		`https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
+		`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`,
+	];
+}
+
+function uniqueUrls(urls: Array<string | undefined>) {
+	return Array.from(
+		new Set(
+			urls
+				.map((url) => url?.trim())
+				.filter((url): url is string => Boolean(url)),
+		),
+	);
 }
 
 if (!steamId) {
@@ -104,9 +244,26 @@ if (!steamId) {
 					playtime_2weeks:
 						recentGame?.playtime_2weeks ?? game.playtime_2weeks ?? 0,
 					img_icon_url: game.img_icon_url || recentGame?.img_icon_url,
+					coverUrls: getDefaultCoverUrls(game.appid),
 				};
 			})
 			.sort((a, b) => b.playtime_forever - a.playtime_forever);
+
+		const storeDetails = await fetchSteamStoreDetails(
+			games.map((game) => game.appid),
+		);
+		games = games.map((game) => {
+			const detail = storeDetails.get(game.appid);
+			return {
+				...game,
+				coverUrls: uniqueUrls([
+					detail?.header_image,
+					detail?.capsule_image,
+					detail?.capsule_imagev5,
+					...game.coverUrls,
+				]),
+			};
+		});
 
 		recentGames = games
 			.filter((game) => game.playtime_2weeks > 0)
@@ -142,8 +299,8 @@ function formatHours(minutes: number) {
 	return `${Math.round(hours)} 小时`;
 }
 
-function getGameCover(appid: number) {
-	return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`;
+function getGameCover(game: SteamGame) {
+	return game.coverUrls[0] || getDefaultCoverUrls(game.appid)[0];
 }
 
 function getGameIcon(game: SteamGame) {
@@ -163,6 +320,263 @@ function getLastPlayedText(timestamp?: number) {
 		day: "2-digit",
 	});
 }
+
+const dayMs = 24 * 60 * 60 * 1000;
+const chartWidth = 640;
+const chartHeight = 190;
+const chartPadding = {
+	top: 18,
+	right: 18,
+	bottom: 28,
+	left: 34,
+};
+
+function getDateKeyInTimeZone(date = new Date()) {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: siteConfig.timezone || "Asia/Shanghai",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(date);
+	const values = Object.fromEntries(
+		parts.map((part) => [part.type, part.value]),
+	);
+	return `${values.year}-${values.month}-${values.day}`;
+}
+
+function parseDateKey(dateKey: string) {
+	const [year, month, day] = dateKey.split("-").map(Number);
+	if (!year || !month || !day) return Number.NaN;
+	return Date.UTC(year, month - 1, day);
+}
+
+function formatDateKey(timestamp: number) {
+	return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function formatShortDate(dateKey: string) {
+	const [, month, day] = dateKey.split("-");
+	return `${month}/${day}`;
+}
+
+function normalizeHistorySnapshots(
+	snapshots: SteamHistorySnapshot[],
+	current?: SteamHistorySnapshot,
+) {
+	const byDate = new Map<string, SteamHistorySnapshot>();
+
+	for (const snapshot of snapshots) {
+		if (
+			!snapshot?.date ||
+			!Number.isFinite(snapshot.totalPlayMinutes) ||
+			Number.isNaN(parseDateKey(snapshot.date))
+		) {
+			continue;
+		}
+		byDate.set(snapshot.date, snapshot);
+	}
+
+	if (current) {
+		byDate.set(current.date, current);
+	}
+
+	return Array.from(byDate.values()).sort((a, b) =>
+		a.date.localeCompare(b.date),
+	);
+}
+
+function getSnapshotDeltas(snapshots: SteamHistorySnapshot[]) {
+	return snapshots.map((snapshot, index) => {
+		const previous = snapshots[index - 1];
+		return {
+			date: snapshot.date,
+			minutes: previous
+				? Math.max(0, snapshot.totalPlayMinutes - previous.totalPlayMinutes)
+				: 0,
+		};
+	});
+}
+
+function formatTrendPercent(percent: number | null) {
+	if (percent === null) return "待记录";
+	if (Math.abs(percent) < 1) return "持平";
+	return `${percent > 0 ? "+" : ""}${Math.round(percent)}%`;
+}
+
+function getTrendTone(
+	totalMinutes: number,
+	previousTotalMinutes: number,
+	percentChange: number | null,
+): SteamTrendChart["tone"] {
+	if (previousTotalMinutes <= 0 && totalMinutes <= 0) return "empty";
+	if (previousTotalMinutes <= 0) return "new";
+	if (percentChange === null || Math.abs(percentChange) < 5) return "flat";
+	return percentChange > 0 ? "up" : "down";
+}
+
+function buildTrendInsight(chart: {
+	days: number;
+	totalMinutes: number;
+	previousTotalMinutes: number;
+	percentChange: number | null;
+	snapshotCount: number;
+}) {
+	const currentLabel = chart.days === 7 ? "这周" : "这 30 天";
+	const previousLabel = chart.days === 7 ? "上周" : "前 30 天";
+
+	if (chart.snapshotCount < 2) {
+		return `${currentLabel}的时间轴刚开档，先收集几次构建快照；等记录长起来，就能给你写完整战报啦。`;
+	}
+
+	if (chart.previousTotalMinutes <= 0 && chart.totalMinutes > 0) {
+		return `${currentLabel}记录到 ${formatHours(chart.totalMinutes)}，${previousLabel}还没有可比较数据，像新番第一话刚播，主线已经点亮。`;
+	}
+
+	if (chart.totalMinutes <= 0 && chart.previousTotalMinutes <= 0) {
+		return `${currentLabel}几乎没有新增游玩，手柄进入省电模式，二次元能量槽安静补魔中。`;
+	}
+
+	const percentText = formatTrendPercent(chart.percentChange);
+
+	if ((chart.percentChange ?? 0) >= 25) {
+		return `${currentLabel}比${previousLabel}多玩了 ${percentText}，游戏魂明显升温；记得在快乐读档和早点休息之间走一条好路线。`;
+	}
+
+	if ((chart.percentChange ?? 0) > 5) {
+		return `${currentLabel}比${previousLabel}多玩了 ${percentText}，属于轻量加推主线，状态刚刚好。`;
+	}
+
+	if ((chart.percentChange ?? 0) <= -25) {
+		return `${currentLabel}比${previousLabel}少玩了 ${percentText.replace("-", "")}，看来现实支线占了上风，游戏存档正在乖乖等你回来。`;
+	}
+
+	if ((chart.percentChange ?? 0) < -5) {
+		return `${currentLabel}比${previousLabel}少玩了 ${percentText.replace("-", "")}，游玩节奏变清爽了，像把待办和存档都整理了一遍。`;
+	}
+
+	return `${currentLabel}和${previousLabel}基本持平，游戏时间稳定巡航，属于很会管理体力条的玩家。`;
+}
+
+function buildTrendChart(
+	snapshots: SteamHistorySnapshot[],
+	days: number,
+): SteamTrendChart {
+	const range = days === 7 ? "week" : "month";
+	const latestDate = snapshots.at(-1)?.date || getDateKeyInTimeZone();
+	const endTime = parseDateKey(latestDate);
+	const startTime = endTime - (days - 1) * dayMs;
+	const previousStartTime = startTime - days * dayMs;
+	const plotWidth = chartWidth - chartPadding.left - chartPadding.right;
+	const plotHeight = chartHeight - chartPadding.top - chartPadding.bottom;
+	const deltas = getSnapshotDeltas(snapshots);
+	const deltaByDate = new Map(
+		deltas.map((delta) => [delta.date, delta.minutes]),
+	);
+	const rawPoints = Array.from({ length: days }, (_, index) => {
+		const date = formatDateKey(startTime + index * dayMs);
+		return {
+			date,
+			label: formatShortDate(date),
+			minutes: deltaByDate.get(date) || 0,
+		};
+	});
+	const maxMinutes = Math.max(60, ...rawPoints.map((point) => point.minutes));
+	const baseline = chartPadding.top + plotHeight;
+	const points = rawPoints.map((point, index) => {
+		const x =
+			chartPadding.left +
+			(days === 1 ? 0 : (plotWidth * index) / Math.max(1, days - 1));
+		const y = baseline - (point.minutes / maxMinutes) * plotHeight;
+		return {
+			...point,
+			x,
+			y,
+			isMarker:
+				point.minutes > 0 || index === 0 || index === rawPoints.length - 1,
+		};
+	});
+	const path = points
+		.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+		.join(" ");
+	const areaPath = `${path} L ${points.at(-1)?.x ?? chartPadding.left} ${baseline} L ${points[0]?.x ?? chartPadding.left} ${baseline} Z`;
+	const gridPath = [0, 0.5, 1]
+		.map((level) => {
+			const y = baseline - level * plotHeight;
+			return `M ${chartPadding.left} ${y} L ${chartWidth - chartPadding.right} ${y}`;
+		})
+		.join(" ");
+	const totalMinutes = points.reduce(
+		(total, point) => total + point.minutes,
+		0,
+	);
+	const previousTotalMinutes = deltas.reduce((total, delta) => {
+		const time = parseDateKey(delta.date);
+		if (time >= previousStartTime && time < startTime) {
+			return total + delta.minutes;
+		}
+		return total;
+	}, 0);
+	const percentChange =
+		previousTotalMinutes > 0
+			? ((totalMinutes - previousTotalMinutes) / previousTotalMinutes) * 100
+			: null;
+	const snapshotCount = snapshots.filter((snapshot) => {
+		const time = parseDateKey(snapshot.date);
+		return time >= previousStartTime && time <= endTime;
+	}).length;
+	const chart = {
+		range,
+		days,
+		title: days === 7 ? "近 7 天" : "近 30 天",
+		totalMinutes,
+		averageMinutes: Math.round(totalMinutes / days),
+		previousTotalMinutes,
+		percentChange,
+		percentText: formatTrendPercent(percentChange),
+		compareLabel: days === 7 ? "对比上周" : "对比前 30 天",
+		tone: getTrendTone(totalMinutes, previousTotalMinutes, percentChange),
+		path,
+		areaPath,
+		gridPath,
+		points,
+		startLabel: points[0]?.label || "",
+		endLabel: points.at(-1)?.label || "",
+		maxLabel: formatHours(maxMinutes),
+		snapshotCount,
+	} satisfies Omit<SteamTrendChart, "insight">;
+
+	return {
+		...chart,
+		insight: buildTrendInsight(chart),
+	};
+}
+
+const currentHistorySnapshot =
+	fetchStatus === "ok"
+		? {
+				date: getDateKeyInTimeZone(),
+				recordedAt: new Date().toISOString(),
+				totalPlayMinutes,
+				recentPlayMinutes,
+				gameCount: games.length,
+				playedGameCount: playedGames.length,
+				topGame: mostPlayedGame
+					? {
+							appid: mostPlayedGame.appid,
+							name: mostPlayedGame.name,
+							playtime_forever: mostPlayedGame.playtime_forever,
+						}
+					: undefined,
+			}
+		: undefined;
+const historySnapshots = normalizeHistorySnapshots(
+	steamHistory as SteamHistorySnapshot[],
+	currentHistorySnapshot,
+);
+const trendCharts = [
+	buildTrendChart(historySnapshots, 7),
+	buildTrendChart(historySnapshots, 30),
+];
 
 const filters = [
 	{ value: "all", label: "全部", count: games.length },
@@ -210,6 +624,93 @@ const filters = [
 							<span>最常玩</span>
 							<strong>{mostPlayedGame?.name || "暂无"}</strong>
 						</div>
+					</section>
+
+					<section class="steam-trend mb-6">
+						<div class="steam-trend-header">
+							<div class="min-w-0">
+								<div class="flex items-center gap-2 mb-2">
+									<Icon name="material-symbols:show-chart" class="text-(--primary) text-[1.25rem]" />
+									<h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-100 m-0">游玩时间趋势</h2>
+								</div>
+								<p class="steam-trend-subtitle">
+									按构建快照统计新增游玩时间
+								</p>
+							</div>
+							<div class="steam-trend-tabs">
+								{trendCharts.map((chart) => (
+									<button
+										class:list={[
+											"steam-trend-tab",
+											{ "is-active": chart.range === "week" },
+										]}
+										type="button"
+										data-steam-chart-tab={chart.range}
+										aria-pressed={chart.range === "week" ? "true" : "false"}
+									>
+										{chart.title}
+									</button>
+								))}
+							</div>
+						</div>
+
+						{trendCharts.map((chart) => (
+							<div
+								class="steam-trend-panel"
+								data-steam-chart-panel={chart.range}
+								hidden={chart.range !== "week"}
+							>
+								<div class="steam-chart-wrap">
+									<svg
+										class="steam-chart"
+										viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+										role="img"
+										aria-label={`${chart.title}新增游玩时间折线图`}
+									>
+										<path class="steam-chart-grid" d={chart.gridPath} />
+										<path class="steam-chart-area" d={chart.areaPath} />
+										<path class="steam-chart-line" d={chart.path} />
+										{chart.points
+											.filter((point) => point.isMarker)
+											.map((point) => (
+												<circle
+													class:list={[
+														"steam-chart-point",
+														{ "is-empty": point.minutes === 0 },
+													]}
+													cx={point.x}
+													cy={point.y}
+													r={point.minutes > 0 ? 4 : 2.5}
+												>
+													<title>{`${point.label}：${formatHours(point.minutes)}`}</title>
+												</circle>
+											))}
+										<text class="steam-chart-label" x={chartPadding.left} y={chartHeight - 6}>{chart.startLabel}</text>
+										<text class="steam-chart-label" x={chartWidth - chartPadding.right} y={chartHeight - 6} text-anchor="end">{chart.endLabel}</text>
+										<text class="steam-chart-label" x={chartPadding.left} y={chartPadding.top + 4}>{chart.maxLabel}</text>
+									</svg>
+								</div>
+
+								<div class="steam-trend-stats">
+									<div class="steam-trend-stat">
+										<span>{chart.title}新增</span>
+										<strong>{formatHours(chart.totalMinutes)}</strong>
+									</div>
+									<div class="steam-trend-stat">
+										<span>日均</span>
+										<strong>{formatHours(chart.averageMinutes)}</strong>
+									</div>
+									<div class:list={["steam-trend-stat", `tone-${chart.tone}`]}>
+										<span>{chart.compareLabel}</span>
+										<strong>{chart.percentText}</strong>
+									</div>
+								</div>
+
+								<p class:list={["steam-trend-insight", `tone-${chart.tone}`]}>
+									{chart.insight}
+								</p>
+							</div>
+						))}
 					</section>
 
 					{recentGames.length > 0 && (
@@ -285,7 +786,14 @@ const filters = [
 								data-unplayed={game.playtime_forever === 0 ? "true" : "false"}
 							>
 								<div class="steam-cover">
-									<img src={getGameCover(game.appid)} alt={game.name} loading="lazy" decoding="async" />
+									<img
+										src={getGameCover(game)}
+										alt={game.name}
+										loading="lazy"
+										decoding="async"
+										data-steam-cover-index="0"
+										data-steam-cover-urls={JSON.stringify(game.coverUrls)}
+									/>
 									<div class="steam-cover-overlay" />
 									<div class="steam-card-content">
 										<h3>{game.name}</h3>
@@ -359,10 +867,74 @@ const filters = [
 		});
 	}
 
-	if (document.readyState === "loading") {
-		document.addEventListener("DOMContentLoaded", initSteamFilters);
-	} else {
+	function getSteamCoverUrls(image: HTMLImageElement) {
+		try {
+			const urls = JSON.parse(image.dataset.steamCoverUrls || "[]");
+			if (!Array.isArray(urls)) return [];
+			return urls.filter((url): url is string => typeof url === "string" && url.length > 0);
+		} catch {
+			return [];
+		}
+	}
+
+	function loadNextSteamCover(image: HTMLImageElement) {
+		const urls = getSteamCoverUrls(image);
+		const currentIndex = Number.parseInt(image.dataset.steamCoverIndex || "0", 10);
+		const nextIndex = currentIndex + 1;
+
+		if (nextIndex < urls.length) {
+			image.dataset.steamCoverIndex = String(nextIndex);
+			image.hidden = false;
+			image.src = urls[nextIndex];
+			return;
+		}
+
+		image.hidden = true;
+		image.closest(".steam-cover")?.classList.add("steam-cover-missing");
+	}
+
+	function initSteamCoverFallbacks() {
+		const images = document.querySelectorAll<HTMLImageElement>("[data-steam-cover-urls]");
+
+		images.forEach((image) => {
+			image.addEventListener("error", () => loadNextSteamCover(image));
+			if (image.complete && image.naturalWidth === 0) {
+				loadNextSteamCover(image);
+			}
+		});
+	}
+
+	function initSteamTrendTabs() {
+		const tabs = document.querySelectorAll<HTMLButtonElement>("[data-steam-chart-tab]");
+		const panels = document.querySelectorAll<HTMLElement>("[data-steam-chart-panel]");
+
+		tabs.forEach((tab) => {
+			tab.addEventListener("click", () => {
+				const range = tab.dataset.steamChartTab;
+
+				tabs.forEach((item) => {
+					const isActive = item.dataset.steamChartTab === range;
+					item.classList.toggle("is-active", isActive);
+					item.setAttribute("aria-pressed", isActive ? "true" : "false");
+				});
+
+				panels.forEach((panel) => {
+					panel.hidden = panel.dataset.steamChartPanel !== range;
+				});
+			});
+		});
+	}
+
+	function initSteamPage() {
 		initSteamFilters();
+		initSteamCoverFallbacks();
+		initSteamTrendTabs();
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initSteamPage);
+	} else {
+		initSteamPage();
 	}
 </script>
 
@@ -408,6 +980,180 @@ const filters = [
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.steam-trend {
+		border: 1px solid var(--line-divider);
+		border-radius: 8px;
+		background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08));
+		padding: 0.9rem;
+	}
+
+	.steam-trend-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.steam-trend-subtitle {
+		margin: 0;
+		color: var(--text-color-secondary);
+		font-size: 0.78rem;
+		line-height: 1.5;
+	}
+
+	.steam-trend-tabs {
+		display: inline-flex;
+		flex: 0 0 auto;
+		gap: 0.25rem;
+		border: 1px solid var(--line-divider);
+		border-radius: 999px;
+		background: var(--card-bg);
+		padding: 0.2rem;
+	}
+
+	.steam-trend-tab {
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--text-color-secondary);
+		cursor: pointer;
+		font-size: 0.76rem;
+		font-weight: 700;
+		line-height: 1;
+		padding: 0.45rem 0.7rem;
+		transition: background-color 0.15s ease, color 0.15s ease;
+	}
+
+	.steam-trend-tab.is-active {
+		background: var(--primary);
+		color: white;
+	}
+
+	.steam-trend-panel[hidden] {
+		display: none;
+	}
+
+	.steam-chart-wrap {
+		border: 1px solid var(--line-divider);
+		border-radius: 8px;
+		background: var(--card-bg);
+		overflow: hidden;
+	}
+
+	.steam-chart {
+		display: block;
+		width: 100%;
+		height: auto;
+		min-height: 170px;
+	}
+
+	.steam-chart-grid {
+		fill: none;
+		stroke: var(--line-divider);
+		stroke-width: 1;
+	}
+
+	.steam-chart-area {
+		fill: rgba(16, 185, 129, 0.16);
+	}
+
+	.steam-chart-line {
+		fill: none;
+		stroke: var(--primary);
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 3;
+	}
+
+	.steam-chart-point {
+		fill: var(--primary);
+		stroke: var(--card-bg);
+		stroke-width: 2;
+	}
+
+	.steam-chart-point.is-empty {
+		fill: var(--text-color-secondary);
+		opacity: 0.5;
+	}
+
+	.steam-chart-label {
+		fill: var(--text-color-secondary);
+		font-size: 0.7rem;
+	}
+
+	.steam-trend-stats {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.5rem;
+		margin-top: 0.65rem;
+	}
+
+	.steam-trend-stat {
+		border: 1px solid var(--line-divider);
+		border-radius: 8px;
+		background: var(--card-bg);
+		min-width: 0;
+		padding: 0.65rem;
+	}
+
+	.steam-trend-stat span {
+		display: block;
+		color: var(--text-color-secondary);
+		font-size: 0.72rem;
+		margin-bottom: 0.2rem;
+	}
+
+	.steam-trend-stat strong {
+		display: block;
+		color: var(--text-color);
+		font-size: 1rem;
+		line-height: 1.25;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.steam-trend-stat.tone-up strong,
+	.steam-trend-insight.tone-up {
+		color: #16a34a;
+	}
+
+	.steam-trend-stat.tone-down strong,
+	.steam-trend-insight.tone-down {
+		color: #0284c7;
+	}
+
+	.steam-trend-stat.tone-new strong,
+	.steam-trend-insight.tone-new {
+		color: #d97706;
+	}
+
+	.steam-trend-insight {
+		margin: 0.65rem 0 0;
+		color: var(--text-color-secondary);
+		font-size: 0.86rem;
+		line-height: 1.65;
+	}
+
+	@media (max-width: 640px) {
+		.steam-trend-header {
+			flex-direction: column;
+		}
+
+		.steam-trend-tabs {
+			width: 100%;
+		}
+
+		.steam-trend-tab {
+			flex: 1 1 0;
+		}
+
+		.steam-trend-stats {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.steam-recent-list {
@@ -505,6 +1251,10 @@ const filters = [
 		aspect-ratio: 16 / 9;
 		overflow: hidden;
 		background: var(--btn-regular-bg);
+	}
+
+	.steam-cover-missing {
+		background: linear-gradient(135deg, var(--btn-regular-bg), var(--card-bg));
 	}
 
 	.steam-cover img {

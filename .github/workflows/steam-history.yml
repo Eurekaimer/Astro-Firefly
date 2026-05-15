@@ -1,0 +1,52 @@
+name: Update Steam History
+
+on:
+  schedule:
+    # 00:10 Asia/Shanghai. GitHub scheduled runs can be delayed a little.
+    - cron: "10 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: steam-history
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Update Steam history snapshot
+        run: |
+          if [ -z "$STEAM_API_KEY" ]; then
+            echo "::error::Missing STEAM_API_KEY repository secret."
+            exit 1
+          fi
+
+          node scripts/update-steam-history.mjs
+        env:
+          STEAM_API_KEY: ${{ secrets.STEAM_API_KEY }}
+
+      - name: Commit Steam history
+        run: |
+          if git diff --quiet -- src/data/steam-history.json; then
+            echo "Steam history is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/steam-history.json
+          git commit -m "chore: update steam history"
+          git push
