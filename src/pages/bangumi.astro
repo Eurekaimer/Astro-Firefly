@@ -22,6 +22,9 @@ if (!siteConfig.pages.bangumi) {
 
 // 获取构建时间
 const buildTime = formatDateI18nWithTime(new Date());
+const bangumiSubtitle = i18n(I18nKey.bangumiSubtitle);
+const profileLinkText = "我";
+const profileLinkIndex = bangumiSubtitle.indexOf(profileLinkText);
 
 ////////////// Bangumi 配置 ////////////////////////
 const bangumiConfig = {
@@ -211,6 +214,17 @@ const bangumiProfileUrl = bangumiConfig.username
 const normalizeText = (value?: string | null) =>
 	(value || "").toLowerCase().trim();
 
+type MangaProgressItem = {
+	id: string | number;
+	name: string;
+	url: string;
+	latestChapterTitle: string;
+	latestChapterUrl: string;
+	checkedAt: string;
+	progressVol: number;
+	totalVol: number;
+};
+
 const liveMangaProgressItems = (bangumiData.book || [])
 	.filter((item) => item.type === 3)
 	.filter((item) => {
@@ -232,17 +246,25 @@ const liveMangaProgressItems = (bangumiData.book || [])
 	})
 	.slice(0, 6);
 
-const snapshotItems = (mangaProgressSnapshot.items || []).slice(0, 6);
-const mangaProgressItems = snapshotItems.length > 0
+const snapshotItems = mangaProgressSnapshot.items || [];
+const mangaProgressItems: MangaProgressItem[] = snapshotItems.length > 0
 	? snapshotItems.map((item) => ({
+		id: item.id,
 		name: item.name,
 		url: item.url,
+		latestChapterTitle: item.latestChapterTitle || "",
+		latestChapterUrl: item.latestChapterUrl || "",
+		checkedAt: item.checkedAt || "",
 		progressVol: item.progressVol || 0,
 		totalVol: item.totalVol || 0,
 	}))
 	: liveMangaProgressItems.map((item) => ({
+		id: item.subject.id,
 		name: item.subject.name_cn || item.subject.name,
 		url: `https://bgm.tv/subject/${item.subject.id}`,
+		latestChapterTitle: "",
+		latestChapterUrl: "",
+		checkedAt: "",
 		progressVol: item.vol_status || 0,
 		totalVol: item.subject.volumes || 0,
 	}));
@@ -265,27 +287,26 @@ const mangaSnapshotUpdatedAt = mangaProgressSnapshot.updatedAt || "";
                     </div>
                 </div>
                 <p class="text-base text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                    {i18n(I18nKey.bangumiSubtitle)}
+                    {profileLinkIndex >= 0 ? (
+                      <>
+                        {bangumiSubtitle.slice(0, profileLinkIndex)}
+                        <a href={bangumiProfileUrl} target="_blank" rel="noopener noreferrer nofollow" class="text-(--primary) underline-offset-4 hover:underline">
+                          {profileLinkText}
+                        </a>
+                        {bangumiSubtitle.slice(profileLinkIndex + profileLinkText.length)}
+                      </>
+                    ) : (
+                      <a href={bangumiProfileUrl} target="_blank" rel="noopener noreferrer nofollow" class="text-(--primary) underline-offset-4 hover:underline">
+                        {bangumiSubtitle}
+                      </a>
+                    )}
                 </p>
                 <p class="text-xs text-neutral-500 dark:text-neutral-500 mt-2">
                     {i18n(I18nKey.bangumiLastUpdated)} {buildTime}
                 </p>
             </div>
 
-            <div class="grid gap-3 md:grid-cols-2 mb-7">
-              <a
-                href={bangumiProfileUrl}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                class="group rounded-xl border border-(--line-divider) bg-(--btn-plain-bg) p-4 flex items-center justify-between transition hover:border-(--primary) hover:shadow-md"
-              >
-                <div>
-                  <p class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">Bangumi 账号</p>
-                  <p class="font-semibold text-neutral-900 dark:text-neutral-100">@{bangumiConfig.username || "未配置"}</p>
-                </div>
-                <Icon name="material-symbols:open-in-new-rounded" class="text-xl text-(--primary)" />
-              </a>
-
+            <div class="mb-7 max-w-2xl">
               <div class="rounded-xl border border-(--line-divider) bg-(--btn-plain-bg) p-4">
                 <div class="flex items-center justify-between mb-2">
                   <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">漫画追更进度</p>
@@ -297,13 +318,22 @@ const mangaSnapshotUpdatedAt = mangaProgressSnapshot.updatedAt || "";
                 {mangaProgressItems.length > 0 ? (
                   <ul class="space-y-2">
                     {mangaProgressItems.map((item) => {
-                      const progressText = item.totalVol > 0 ? `${item.progressVol}/${item.totalVol} 卷` : `已读 ${item.progressVol} 卷`;
+                      const progressText = item.latestChapterTitle
+                        ? item.latestChapterTitle
+                        : item.totalVol > 0
+                          ? `${item.progressVol}/${item.totalVol} 卷`
+                          : item.progressVol > 0
+                            ? `已读 ${item.progressVol} 卷`
+                            : "追更中";
+                      const progressUrl = item.latestChapterUrl || item.url;
                       return (
                         <li class="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
                           <a href={item.url} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-(--primary) transition">
                             {item.name}
                           </a>
-                          <span class="ml-2 text-neutral-500">{progressText}</span>
+                          <a href={progressUrl} target="_blank" rel="noopener noreferrer nofollow" class="ml-2 text-neutral-500 hover:text-(--primary) transition">
+                            {progressText}
+                          </a>
                         </li>
                       );
                     })}

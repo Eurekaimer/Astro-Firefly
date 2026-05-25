@@ -6,7 +6,7 @@
 		"dev": "astro dev",
 		"start": "astro dev",
 		"check": "astro check",
-		"build": "node scripts/generate-icons.js && node scripts/update-steam-history.mjs && astro build && pagefind --site dist",
+		"build": "node scripts/generate-icons.js && node scripts/sync-koma-bell-progress.mjs && node scripts/update-steam-history.mjs && astro build && pagefind --site dist",
 		"preview": "astro preview",
 		"astro": "astro",
 		"type-check": "tsc --noEmit --isolatedDeclarations",
@@ -15,7 +15,8 @@
 		"lint": "biome check --write ./src",
 		"preinstall": "npx only-allow pnpm",
 		"icons": "node scripts/generate-icons.js",
-		"steam:history": "node scripts/update-steam-history.mjs"
+		"steam:history": "node scripts/update-steam-history.mjs",
+		"manga:sync": "node scripts/sync-koma-bell-progress.mjs"
 	},
 	"dependencies": {
 		"@astrojs/check": "^0.9.8",
