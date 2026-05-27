@@ -29,13 +29,8 @@ jobs:
 
       - name: Update Bangumi manga subscription snapshot
         env:
-          BANGUMI_USER_ID: ${{ secrets.BANGUMI_USER_ID }}
+          BANGUMI_USER_ID: ${{ secrets.BANGUMI_USER_ID || vars.BANGUMI_USER_ID }}
         run: |
-          if [ -z "$BANGUMI_USER_ID" ]; then
-            echo "::error::Missing BANGUMI_USER_ID repository secret."
-            exit 1
-          fi
-
           node scripts/update-bangumi-subscription.mjs
 
       - name: Commit subscription snapshot
