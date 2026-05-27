@@ -1,108 +1,14 @@
 {
-  "source": "koma-bell",
-  "sourcePath": "../koma-bell/subscriptions.yml",
-  "statePath": "",
-  "updatedAt": "2026-05-25T08:35:14.616Z",
-  "total": 9,
+  "userId": "1191748",
+  "updatedAt": "2026-05-27T01:08:24.038Z",
+  "total": 1,
   "items": [
     {
-      "id": "errenbashi",
-      "name": "二人巴士",
-      "url": "https://www.mangacopy.com/comic/errenbashi",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
+      "subjectId": 419801,
+      "name": "无法向繁星许愿的恋情",
+      "url": "https://bgm.tv/subject/419801",
       "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "huaxunlingran",
-      "name": "花薰凜然",
-      "url": "https://www.mangacopy.com/comic/huaxunlingran",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "lianyuqingchang",
-      "name": "戀語輕唱",
-      "url": "https://www.mangacopy.com/comic/lianyuqingchang",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "puweijunhao",
-      "name": "譜為君嗥",
-      "url": "https://www.mangacopy.com/comic/puweijunhao",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "shangyinamudanjiuzuishenzisibaihehuaban",
-      "name": "上伊那牡丹，酒醉身姿似百合花般",
-      "url": "https://www.mangacopy.com/comic/shangyinamudanjiuzuishenzisibaihehuaban",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "woxinzhongdeyeshou",
-      "name": "我心裡危險的東西",
-      "url": "https://www.mangacopy.com/comic/woxinzhongdeyeshou",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "xiangbendangaobai",
-      "name": "向笨蛋告白",
-      "url": "https://www.mangacopy.com/comic/xiangbendangaobai",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "xiangchidiaowodefeirenshaonv",
-      "name": "想吃掉我的非人少女",
-      "url": "https://www.mangacopy.com/comic/xiangchidiaowodefeirenshaonv",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
-    },
-    {
-      "id": "yinweijintiannvyoubuzaijia",
-      "name": "因為今天女友不在",
-      "url": "https://www.mangacopy.com/comic/yinweijintiannvyoubuzaijia",
-      "source": "koma-bell",
-      "latestChapterTitle": "",
-      "latestChapterUrl": "",
-      "checkedAt": "",
-      "progressVol": 0,
-      "totalVol": 0
+      "totalVol": 5
     }
   ]
 }
