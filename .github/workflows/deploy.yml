@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [master]
+  schedule:
+    # Every three days at 16:45 UTC (00:45 Asia/Shanghai), after data snapshots update.
+    - cron: "45 16 */3 * *"
   workflow_dispatch:
 
 permissions:
