@@ -91,6 +91,7 @@ export type SiteConfig = {
 		friends: boolean; // 友链页面开关
 		sponsor: boolean; // 赞助页面开关
 		guestbook: boolean; // 留言板页面开关
+		moments: boolean; // Moments page switch
 		bangumi: boolean;
 		steam: boolean; // Steam 统计页面开关
 		gallery: boolean; // 相册页面开关
@@ -171,6 +172,7 @@ export type Favicon = {
 export enum LinkPreset {
 	Home = 0,
 	Archive = 1,
+	Moments = 9,
 	About = 2,
 	Friends = 3,
 	Sponsor = 4,

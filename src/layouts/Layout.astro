@@ -1391,3 +1391,156 @@ function disableAnimation() {
     initIconLoader();
   }
 </script>
+
+<script is:inline data-swup-ignore-script>
+  (function setupSteamInteractions() {
+    if (window.__steamInteractionsBound) return;
+    window.__steamInteractionsBound = true;
+
+    var activeFilterClasses = ["bg-(--primary)", "text-white", "shadow-md"];
+    var inactiveFilterClasses = [
+      "bg-(--btn-regular-bg)",
+      "text-(--btn-content)",
+      "hover:bg-(--btn-regular-bg-hover)"
+    ];
+
+    function setFilterButtonState(activeFilter) {
+      document.querySelectorAll("[data-steam-filter]").forEach(function(button) {
+        var isActive = button.getAttribute("data-steam-filter") === activeFilter;
+        button.classList.remove.apply(button.classList, isActive ? inactiveFilterClasses : activeFilterClasses);
+        button.classList.add.apply(button.classList, isActive ? activeFilterClasses : inactiveFilterClasses);
+      });
+    }
+
+    function applySteamFilter(filter) {
+      setFilterButtonState(filter);
+      document.querySelectorAll("[data-steam-game]").forEach(function(game) {
+        var shouldShow =
+          filter === "all" ||
+          (filter === "recent" && game.getAttribute("data-recent") === "true") ||
+          (filter === "unplayed" && game.getAttribute("data-unplayed") === "true");
+        game.hidden = !shouldShow;
+      });
+    }
+
+    function applySteamChartRange(range) {
+      if (!range) return;
+
+      document.querySelectorAll("[data-steam-chart-tab]").forEach(function(tab) {
+        var isActive = tab.getAttribute("data-steam-chart-tab") === range;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+
+      document.querySelectorAll("[data-steam-chart-panel]").forEach(function(panel) {
+        panel.hidden = panel.getAttribute("data-steam-chart-panel") !== range;
+      });
+    }
+
+    function getSteamCoverUrls(image) {
+      try {
+        var urls = JSON.parse(image.getAttribute("data-steam-cover-urls") || "[]");
+        return Array.isArray(urls)
+          ? urls.filter(function(url) { return typeof url === "string" && url.length > 0; })
+          : [];
+      } catch (_error) {
+        return [];
+      }
+    }
+
+    function loadNextSteamCover(image) {
+      var urls = getSteamCoverUrls(image);
+      var currentIndex = Number.parseInt(image.getAttribute("data-steam-cover-index") || "0", 10);
+      var nextIndex = currentIndex + 1;
+
+      if (nextIndex < urls.length) {
+        image.setAttribute("data-steam-cover-index", String(nextIndex));
+        image.hidden = false;
+        image.src = urls[nextIndex];
+        return;
+      }
+
+      image.hidden = true;
+      var cover = image.closest(".steam-cover");
+      if (cover) cover.classList.add("steam-cover-missing");
+    }
+
+    function initSteamCoverFallbacks() {
+      document.querySelectorAll("[data-steam-cover-urls]").forEach(function(image) {
+        if (image.getAttribute("data-steam-cover-bound") !== "true") {
+          image.setAttribute("data-steam-cover-bound", "true");
+          image.addEventListener("error", function() {
+            loadNextSteamCover(image);
+          });
+        }
+
+        if (image.complete && image.naturalWidth === 0) {
+          loadNextSteamCover(image);
+        }
+      });
+    }
+
+    function initSteamDefaultState() {
+      var activeTab = document.querySelector('[data-steam-chart-tab][aria-pressed="true"]')
+        || document.querySelector("[data-steam-chart-tab].is-active")
+        || document.querySelector("[data-steam-chart-tab]");
+      if (activeTab) applySteamChartRange(activeTab.getAttribute("data-steam-chart-tab"));
+
+      var activeFilter = document.querySelector('[data-steam-filter="all"]')
+        || document.querySelector("[data-steam-filter]");
+      if (activeFilter) applySteamFilter(activeFilter.getAttribute("data-steam-filter") || "all");
+
+      initSteamCoverFallbacks();
+    }
+
+    function scheduleSteamInit() {
+      window.requestAnimationFrame(initSteamDefaultState);
+    }
+
+    document.addEventListener("click", function(event) {
+      var target = event.target;
+      if (!(target instanceof Element)) return;
+
+      var filterButton = target.closest("[data-steam-filter]");
+      if (filterButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        applySteamFilter(filterButton.getAttribute("data-steam-filter") || "all");
+        return;
+      }
+
+      var chartTab = target.closest("[data-steam-chart-tab]");
+      if (chartTab instanceof HTMLButtonElement) {
+        event.preventDefault();
+        applySteamChartRange(chartTab.getAttribute("data-steam-chart-tab"));
+      }
+    });
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scheduleSteamInit);
+    } else {
+      scheduleSteamInit();
+    }
+
+    [
+      "astro:page-load",
+      "astro:after-swap",
+      "swup:contentReplaced",
+      "swup:content:replace",
+      "swup:page:view",
+      "swup:enable"
+    ].forEach(function(eventName) {
+      document.addEventListener(eventName, scheduleSteamInit);
+    });
+
+    function bindSwupHooks() {
+      if (!window.swup || !window.swup.hooks || window.__steamSwupHooksBound) return;
+      window.__steamSwupHooksBound = true;
+      window.swup.hooks.on("content:replace", scheduleSteamInit);
+      window.swup.hooks.on("page:view", scheduleSteamInit);
+    }
+
+    bindSwupHooks();
+    document.addEventListener("swup:enable", bindSwupHooks);
+  })();
+</script>
+

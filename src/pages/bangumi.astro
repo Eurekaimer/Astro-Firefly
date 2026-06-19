@@ -225,6 +225,18 @@ type MangaProgressItem = {
 	totalVol: number;
 };
 
+type MangaProgressSnapshotItem = {
+	id?: string | number;
+	subjectId?: string | number;
+	name: string;
+	url: string;
+	latestChapterTitle?: string;
+	latestChapterUrl?: string;
+	checkedAt?: string;
+	progressVol?: number;
+	totalVol?: number;
+};
+
 const liveMangaProgressItems = (bangumiData.book || [])
 	.filter((item) => item.type === 3)
 	.filter((item) => {
@@ -246,10 +258,10 @@ const liveMangaProgressItems = (bangumiData.book || [])
 	})
 	.slice(0, 6);
 
-const snapshotItems = mangaProgressSnapshot.items || [];
+const snapshotItems = (mangaProgressSnapshot.items || []) as MangaProgressSnapshotItem[];
 const mangaProgressItems: MangaProgressItem[] = snapshotItems.length > 0
 	? snapshotItems.map((item) => ({
-		id: item.id,
+		id: item.id ?? item.subjectId ?? item.url,
 		name: item.name,
 		url: item.url,
 		latestChapterTitle: item.latestChapterTitle || "",

@@ -36,7 +36,13 @@ const specCollection = defineCollection({
 	schema: z.object({}),
 });
 
+const momentsCollection = defineCollection({
+	loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/moments" }),
+	schema: z.object({}),
+});
+
 export const collections = {
 	posts: postsCollection,
 	spec: specCollection,
+	moments: momentsCollection,
 };

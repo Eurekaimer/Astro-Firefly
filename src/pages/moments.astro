@@ -1,0 +1,52 @@
+---
+import { getCollection, render } from "astro:content";
+import MomentsTimeline from "@/components/pages/MomentsTimeline.astro";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+
+function parseMomentDate(id: string) {
+	const filename = id.split("/").pop()?.replace(/\.mdx?$/, "") ?? id;
+	const match = filename.match(/^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})$/);
+	if (!match) return new Date(0);
+	const [, year, month, day, hour, minute] = match;
+	return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+}
+
+function formatDate(date: Date) {
+	return new Intl.DateTimeFormat("zh-CN", {
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(date);
+}
+
+function formatTime(date: Date) {
+	return new Intl.DateTimeFormat("zh-CN", {
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+	}).format(date);
+}
+
+const entries = await getCollection("moments");
+const moments = await Promise.all(
+	entries.map(async (entry) => {
+		const { Content } = await render(entry);
+		const date = parseMomentDate(entry.id);
+		return {
+			id: entry.id,
+			date,
+			dateLabel: formatDate(date),
+			timeLabel: formatTime(date),
+			Content,
+		};
+	}),
+);
+
+moments.sort((a, b) => b.date.getTime() - a.date.getTime());
+---
+
+<MainGridLayout title={i18n(I18nKey.moments)} description="碎片化记录">
+	<MomentsTimeline moments={moments} />
+</MainGridLayout>

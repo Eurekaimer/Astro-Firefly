@@ -1,0 +1,62 @@
+---
+import Markdown from "@/components/common/Markdown.astro";
+
+type MomentItem = {
+	id: string;
+	date: Date;
+	dateLabel: string;
+	timeLabel: string;
+	Content: any;
+};
+
+interface Props {
+	moments: MomentItem[];
+}
+
+const { moments } = Astro.props;
+---
+
+<div class="moments-timeline card-base rounded-(--radius-large) px-5 py-6 md:px-8 md:py-7">
+	{moments.length > 0 ? (
+		<div class="relative">
+			<div class="absolute left-0 top-2 bottom-2 hidden w-px bg-[var(--line-divider)] md:block"></div>
+			<div class="space-y-8">
+				{moments.map((moment) => {
+					const Content = moment.Content;
+					return (
+						<article class="grid gap-3 md:grid-cols-[8.5rem_1fr] md:gap-6">
+							<div class="relative pl-5 md:pl-0">
+								<div class="absolute left-0 top-1.5 h-3 w-3 rounded-full border-2 border-[var(--primary)] bg-[var(--card-bg)] md:left-[-0.34rem]"></div>
+								<div class="text-sm font-medium text-75 md:pl-5">{moment.dateLabel}</div>
+								<div class="text-xs text-50 md:pl-5">{moment.timeLabel}</div>
+							</div>
+							<div class="min-w-0 rounded-lg border border-[var(--line-divider)] bg-[var(--card-bg)]/60 px-4 py-3">
+								<Markdown class="moment-markdown">
+									<Content />
+								</Markdown>
+							</div>
+						</article>
+					);
+				})}
+			</div>
+		</div>
+	) : (
+		<p class="text-sm text-50">暂无说说。</p>
+	)}
+</div>
+
+<style is:global>
+	.moments-timeline .moment-markdown > :first-child {
+		margin-top: 0;
+	}
+
+	.moments-timeline .moment-markdown > :last-child {
+		margin-bottom: 0;
+	}
+
+	.moments-timeline .moment-markdown img {
+		max-width: 100%;
+		height: auto;
+		border-radius: 0.5rem;
+	}
+</style>

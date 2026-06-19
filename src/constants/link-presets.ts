@@ -18,6 +18,11 @@ export const LinkPresets: { [key in LinkPreset]: NavBarLink } = {
 		url: "/archive/",
 		icon: "material-symbols:archive",
 	},
+	[LinkPreset.Moments]: {
+		name: i18n(I18nKey.moments),
+		url: "/moments/",
+		icon: "material-symbols:chat-bubble-outline-rounded",
+	},
 	[LinkPreset.Friends]: {
 		name: i18n(I18nKey.friends),
 		url: "/friends/",
