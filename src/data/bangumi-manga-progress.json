@@ -1,8 +1,22 @@
 {
   "userId": "1191748",
-  "updatedAt": "2026-07-21T17:48:12.732Z",
-  "total": 1,
+  "updatedAt": "2026-07-22T17:43:58.753Z",
+  "total": 3,
   "items": [
+    {
+      "subjectId": 420817,
+      "name": "破坏殆尽后在地狱相爱",
+      "url": "https://bgm.tv/subject/420817",
+      "progressVol": 0,
+      "totalVol": 0
+    },
+    {
+      "subjectId": 282923,
+      "name": "上伊那牡丹，醉姿如百合",
+      "url": "https://bgm.tv/subject/282923",
+      "progressVol": 0,
+      "totalVol": 0
+    },
     {
       "subjectId": 419801,
       "name": "无法向繁星许愿的恋情",
