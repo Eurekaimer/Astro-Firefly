@@ -31,6 +31,60 @@ export const friendsConfig: FriendLink[] = [
 		weight: 10, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
+	{
+		title: "Meraki's bar",
+		imgurl: "https://avatars.githubusercontent.com/u/187371253?v=4",
+		desc: "一位学弟的博客",
+		siteurl: "https://meraki111.netlify.app/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "Ice Year の位面",
+		imgurl: "https://avatars.githubusercontent.com/iceyear",
+		desc: "Il n'y a pas de hasard, il n'y a que des rendez-vous.",
+		siteurl: "https://blog.iceyear.eu.org",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "春风少年兄",
+		imgurl: "https://avatars.githubusercontent.com/u/138082074?v=4",
+		desc: "你在世纪大道东门",
+		siteurl: "https://blog.0pt.icu/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "Yon Zilch",
+		imgurl: "https://avatars.githubusercontent.com/u/141223334?v=4",
+		desc: "From the yon, into zilch. Life, a vanished dream.",
+		siteurl: "https://blog.yon.im/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "Wcowin",
+		imgurl: "https://pic4.zhimg.com/80/v2-a0456a5f527c1923f096759f2926012f_1440w.webp",
+		desc: "循此苦旅，以达星辰",
+		siteurl: "https://wcowin.work/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
+	{
+		title: "Wuslee",
+		imgurl: "https://avatars.githubusercontent.com/u/201520333?v=4",
+		desc: "DB",
+		siteurl: "https://wuslee-yz.top/",
+		tags: ["Blog"],
+		weight: 5,
+		enabled: true,
+	},
 ];
 
 // 获取启用的友链并进行排序
